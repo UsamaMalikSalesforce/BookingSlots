@@ -1,0 +1,74 @@
+<template>
+    <div class="slds-grid slds-wrap">
+    <div class="slds-col slds-size_6-of-12 slds-grid slds-wrap">
+        <div class="slds-size_1-of-3">
+            <template if:true={isMonthly}>
+                <lightning-button variant="brand" label="Next Month" title="Next Month" onclick={handleNextMonth} class="slds-m-left_x-small"></lightning-button>
+            </template>
+            <template if:true={isWeekly}>
+                <lightning-button variant="brand" label="Next Week" title="Next Week" onclick={handleNextWeek}  class="slds-m-left_x-small"></lightning-button>
+            </template>
+            <template if:true={isDaily}>
+                <lightning-button variant="brand" label="Next Day" title="Next Day" class="slds-m-left_x-small"></lightning-button>
+            </template>
+
+            
+        </div>
+        <div class="slds-size_1-of-3">
+            <lightning-combobox
+            name="progress"
+            label="Filter"
+            value={filterValue}
+            placeholder="Select"
+            options={filterOptions}
+            onchange={handleFilterChange}
+             ></lightning-combobox>
+        </div>
+        <div class="slds-size_1-of-3">
+            <lightning-button variant="brand" label="Submit" title="Submit" onclick={generateRequestParam} class="slds-m-left_x-small"></lightning-button>
+        </div>
+    </div>
+    
+</div>
+    <div style="overflow-y:scroll">
+       <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+        <thead>
+            <tr>
+                <th>User Name</th>
+                <th></th>
+                <template for:each={dates} for:item="date">
+                    <th style="border: solid;text-align: center;" key={date.key} colspan="6">{date.date}</th>
+                </template>
+            </tr>
+            <tr>
+                <th></th>
+                <th>Arrival Date / Time</th>
+                <template for:each={dates} for:item="date">
+                    <template for:each={timeSlots} for:item="slot">
+                        <th key={slot}>{slot}</th>
+                    </template>
+                </template>
+            </tr>
+        </thead>
+        <tbody>
+            <template for:each={usersList} for:item="user">
+                <tr key={user.Id}>
+                    <td>{user.Name}</td>
+                    <td>{arrivalDayTime}</td>
+                    <template for:each={dates} for:item="date">
+                        <template for:each={timeSlots} for:item="slot">
+                            <td key={user.Id}>
+                                <div>
+                                    <input onclick={handleCheckbox} data-date={date.date} data-slot={slot} data-userid={user.Id} type="checkbox"  name="isCheck" />
+                                </div>
+                                <!-- Add logic to display booking info or button here -->
+                            </td>
+                        </template>
+                    </template>
+                </tr>
+            </template>
+        </tbody>
+    </table>
+    </div>
+    
+</template>
