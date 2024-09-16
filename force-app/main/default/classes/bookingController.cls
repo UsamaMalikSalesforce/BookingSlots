@@ -1,5 +1,20 @@
 public without sharing class bookingController {
     
+    @AuraEnabled
+    public static void logger(){
+        try {
+            List<Booking_Login_Log__c> dataList = [select Id, Name from Booking_Login_Log__c order by createdDate asc];
+            if(dataList.size() > 5)
+            {
+                delete dataList[0];
+            }
+            Booking_Login_Log__c obj = new Booking_Login_Log__c();
+            obj.visited_datetime__c = Datetime.now(); 
+            insert obj;
+        } catch (Exception e) {
+            //throw new AuraHandledException(e.getMessage());
+        }
+    }
     @AuraEnabled(cacheable=true)
     public static string GetUsers(){
         try {

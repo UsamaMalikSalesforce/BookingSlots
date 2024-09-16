@@ -1,5 +1,6 @@
 import { LightningElement, track,wire,api } from 'lwc';
 import GetUsers from '@salesforce/apex/bookingController.GetUsers';
+import logger from '@salesforce/apex/bookingController.logger';
 import saveSlotData from '@salesforce/apex/bookingController.saveSlotData';
 import getAllBookings from '@salesforce/apex/bookingController.getAllBookings';
 
@@ -20,7 +21,24 @@ export default class Booking extends LightningElement {
     isMonthly = true;
     isDaily = false;
     objData = [];
+    @track isDisabled = false;
 
+    handleEditBtn()
+    {
+        this.isDisabled = false;
+        this.objData = [];
+    }
+     handleDateChange(event) {
+         
+         const newDate = event.target.value;
+         this.arrivalDayTime = this.formatDateForSalesforce(newDate);
+         console.log('Date Change: ', this.arrivalDayTime);
+     }
+    formatDateForSalesforce(datetimeStr) {
+        if (!datetimeStr) return null;
+        const date = new Date(datetimeStr);
+        return date.toISOString();
+    }
     // @wire(getAllBookings)
     // wiredgetAllBookings({ error, data }) {
     //     debugger;
@@ -34,10 +52,13 @@ export default class Booking extends LightningElement {
     CallGetAllBookings()
     {
         debugger;
+      //  let _this = this;
         getAllBookings()
             .then((result) => {
                 this.exsitingData = result;
-                console.log('Response: ' + JSON.stringify( result));
+                console.log('Response: ' + JSON.stringify(result));
+                this.isDisabled = true;
+               // this.refreshCheckboxes(_this)
             })
         .catch((error) => {
             console.log('error: ' + JSON.stringify(error));
@@ -50,6 +71,10 @@ export default class Booking extends LightningElement {
         {
             console.log('template found');
         }
+        this.refreshCheckboxes(_this);
+    }
+    refreshCheckboxes(refThis)
+    {
         this.exsitingData.forEach(function(item){
             console.log(item.bookingName);
             console.log(item.bookingDate);
@@ -57,39 +82,59 @@ export default class Booking extends LightningElement {
             console.log(item.bookingSlots);
             console.log(item.bookingUserId);
             console.log(item.bookingUserName);
-            let slotsArray = item.bookingSlots.split(';');
-            if (_this.template)
+            if (item.bookingSlots && item.bookingSlots.includes(";"))
             {
-                slotsArray.forEach(function (currentSlot) {
-                 let checkBox = _this.template.querySelector(
-                    `input[data-date="${item.bookingDate}"][data-slot="${currentSlot}"][data-userid="${item.bookingUserId}"]`
-            );
+                let slotsArray = item.bookingSlots.split(';');
+                if (refThis.template)
+                {
+                    slotsArray.forEach(function (currentSlot) {
+                    let checkBox = refThis.template.querySelector(
+                        `input[data-date="${item.bookingDate}"][data-slot="${currentSlot}"][data-userid="${item.bookingUserId}"]`
+                );
 
-            // Perform actions based on the result
-            if (checkBox) {
+                // Perform actions based on the result
+                if (checkBox) {
 
-                console.log("Checkbox found:", checkBox);
-                checkBox.checked = true;
-                
-                // You can now manipulate the checkbox, like checking if it's checked or unchecked
-                if (checkBox.checked) {
-                    console.log("Checkbox is checked");
-                   
+                    console.log("Checkbox found:", checkBox);
+                    checkBox.checked = true;
+                    
+                    // You can now manipulate the checkbox, like checking if it's checked or unchecked
+                    if (checkBox.checked) {
+                        console.log("Checkbox is checked");
+                    
+                    } else {
+                        console.log("Checkbox is unchecked");
+                    }
                 } else {
-                    console.log("Checkbox is unchecked");
+                    console.log("No checkbox found with the given data attributes");
                 }
-            } else {
-                console.log("No checkbox found with the given data attributes");
+                
+                });
+                }
             }
-            
-            });
+            else if (item.bookingSlots)
+            {
+                let checkBox = refThis.template.querySelector(
+                        `input[data-date="${item.bookingDate}"][data-slot="${item.bookingSlots}"][data-userid="${item.bookingUserId}"]`
+                );
+                if (checkBox) {
+
+                    console.log("Checkbox found:", checkBox);
+                    checkBox.checked = true;
+                    
+                    // You can now manipulate the checkbox, like checking if it's checked or unchecked
+                    if (checkBox.checked) {
+                        console.log("Checkbox is checked");
+                    
+                    } else {
+                        console.log("Checkbox is unchecked");
+                    }
+                } else {
+                    console.log("No checkbox found with the given data attributes");
+                }
             }
-            
-            
-            
-    });
+        });
     }
-    
 
     get filterOptions() {
         return [
@@ -134,14 +179,16 @@ export default class Booking extends LightningElement {
     }
     
     handleCheckbox(event) {
-        //debugger;
+        debugger;
         const selectedDate = event.target.getAttribute('data-date');
         const selectedSlot = event.target.getAttribute('data-slot');
         const selectedUserId = event.target.getAttribute('data-userid');
+        const selectedUserName = event.target.getAttribute('data-username');
 
         console.log('Date:', selectedDate);
         console.log('Slot:', selectedSlot);
         console.log('User ID:', selectedUserId);
+        console.log('User Name:', selectedUserName);
         
         const checkboxes = this.template.querySelectorAll(`input[type="checkbox"][data-date="${selectedDate}"][data-userid="${selectedUserId}"]`);
         checkboxes.forEach(checkbox => {
@@ -151,7 +198,8 @@ export default class Booking extends LightningElement {
                     'userId': checkbox.dataset.userid,
                     'date': checkbox.dataset.date,
                     'slot': checkbox.dataset.slot,
-                    'isChecked': checkbox.checked
+                    'isChecked': checkbox.checked,
+                    'username': checkbox.dataset.username
                 }
            ]
         });
@@ -161,11 +209,12 @@ export default class Booking extends LightningElement {
     finalResult = {};
 
     generateRequestParam() {
+        let validationMsgs = [];
         let result = this.objData.reduce((acc, curr) => {
         let key = `${curr.userId}_${curr.date}`;
 
         if (!acc[key]) {
-            acc[key] = { userId: curr.userId, date: curr.date, slots: [], isChecked: [] };
+            acc[key] = { userId: curr.userId, date: curr.date, slots: [], isChecked: [], username: curr.username };
         }
 
         acc[key].slots.push(curr.slot);
@@ -184,7 +233,8 @@ export default class Booking extends LightningElement {
         userId: item.userId,
         date: item.date,
         slots: item.slots.join(', '),
-        isChecked: item.isChecked.join(', ')
+         isChecked: item.isChecked.join(', '),
+        username: item.username
     }));
 
         console.log(this.finalResult);
@@ -196,6 +246,7 @@ export default class Booking extends LightningElement {
         transformedJson[key] = {
             userId: entry.userId,
             date: entry.date,
+            username:entry.username,
             slots: {}
         };
 
@@ -205,23 +256,63 @@ export default class Booking extends LightningElement {
         }
 
         console.log('New JSON: ' + JSON.stringify(transformedJson));
+        debugger;
+        for (const key in transformedJson) {
+        if (transformedJson.hasOwnProperty(key)) {
+            const userSchedule = transformedJson[key];
+            console.log(`User ID: ${userSchedule.userId}`);
+            console.log(`Date: ${userSchedule.date}`);
+            let validSlots = false;
+            let counterSlots = 0;
+            for (const slot in userSchedule.slots) {
+                const isAvailable = userSchedule.slots[slot];
+                if (isAvailable)
+                {
+                    counterSlots++;
+                }
+                console.log(`Time Slot: ${slot} - Available: ${isAvailable}`);
+            }
 
-        saveSlotData({ data: transformedJson })
+            console.log('----------------');
+            if (counterSlots < 2)
+            {
+                validationMsgs.push(`User: ${userSchedule.username} needs minimum 2 slots for ${userSchedule.date} to save`);
+                console.log(`User ID: ${userSchedule.userId} needs minimum 2 slots for ${userSchedule.date} to save`);
+                delete transformedJson[key];
+            }
+            else {
+                validSlots = true;
+            }
+        }
+        }
+        let _this = this;
+        if (Object.keys(transformedJson).length > 0)
+        {
+            saveSlotData({ data: transformedJson })
             .then((result) => {
-                result = JSON.parse(result);
-                console.log(result);
+                debugger;
+                this.CallGetAllBookings();
+              //  this.refreshCheckboxes(_this);
+                //result = JSON.parse(result);
+               // console.log(result);
                 if (result.status) {
+                    // this.isDisabled = true;
                     alert(result.msg);
                 }
                 else {
+                     
                     alert('Error: ' + result.msg);
                 }
             })
-        .catch((error) => {
+            .catch((error) => {
+                debugger;
             console.log(error);
         });
-    
-
+        }
+        if (validationMsgs.length > 0)
+        {
+            alert(validationMsgs.join('\n'));
+        }
     }
     getArrivalDayTime() {
         const date = new Date();
@@ -245,6 +336,7 @@ export default class Booking extends LightningElement {
         const formattedDate = `${dayName} ${date.getDate()}, ${monthName} ${hours}:${minutes} ${ampm}`;
 
        this.arrivalDayTime = formattedDate;
+      // this.arrivalDayTime = formattedDate;
     }
     getFirstDate(year,month)
     {
@@ -278,9 +370,16 @@ export default class Booking extends LightningElement {
         this.lastDate = this.getLastDate(this.year,this.month);
         this.generateDates();
         this.getArrivalDayTime();
+        logger()
+            .then((result) => {
+                console.log('inserted');
+            })
+            .catch((error) => { 
+                console.log(error);
+            })
         // Fetch users and dates if needed
     }
-    exsitingData=[];
+    @track exsitingData=[];
     generateDates() {
        const dateList = [];
 
