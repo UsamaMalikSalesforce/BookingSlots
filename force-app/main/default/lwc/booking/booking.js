@@ -3,6 +3,7 @@ import GetUsers from '@salesforce/apex/bookingController.GetUsers';
 import logger from '@salesforce/apex/bookingController.logger';
 import saveSlotData from '@salesforce/apex/bookingController.saveSlotData';
 import getAllBookings from '@salesforce/apex/bookingController.getAllBookings';
+import getCurrentUserTimeZone from '@salesforce/apex/bookingUserController.getCurrentUserTimeZone';
 
 export default class Booking extends LightningElement {
     mapdata = new Map();
@@ -22,7 +23,25 @@ export default class Booking extends LightningElement {
     isDaily = false;
     objData = [];
     @track isDisabled = false;
-
+    userTimeZone;
+    handleFromDateChange(event) {
+        
+        const newDate = event.target.value;
+        console.log(newDate);
+        // this.arrivalDayTime = this.formatDateForSalesforce(newDate);
+        // console.log('Date Change: ', this.arrivalDayTime);
+    }
+    @wire(getCurrentUserTimeZone)
+    wiredgetCurrentUserTimeZone({ error, data }) {
+        debugger;
+        if (data) {
+            console.log(JSON.stringify(data));
+            this.userTimeZone = data;
+        }
+        if (error) {
+            console.log('Error Current User Timezone: ' + JSON.stringify(error));
+        }    
+    }
     handleEditBtn()
     {
         this.isDisabled = false;
